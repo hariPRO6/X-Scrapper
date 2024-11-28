@@ -1,4 +1,4 @@
-# Twitter Scraper
+# XScraper
 
 This project scrapes public information from Twitter profiles and stores the data in a MySQL database.
 
