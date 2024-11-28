@@ -1,13 +1,59 @@
+# Import required libraries
 import pandas as pd
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+import mysql.connector
+from mysql.connector import Error
 import time
 
+# Initialize WebDriver
 driver = webdriver.Edge()
 
+# Function to create a connection to the MySQL database
+def create_connection():
+    """Establishes connection to the MySQL database."""     
+    try:
+        connection = mysql.connector.connect(
+            host='127.0.0.1',  # Change as per your setup
+            user='root',  # Replace with your MySQL username
+            password='root',  # Replace with your MySQL password
+            database='twitter_scraper'  # Replace with your database name
+        )
+        if connection.is_connected():
+            print("Connected to MySQL database")
+        return connection
+    except Error as e:
+        print(f"Error connecting to MySQL: {e}")
+        return None
+
+# Function to insert scraped data into the database
+def insert_data(connection, profile_data):
+    """Inserts the scraped data into the twitter_profiles table."""
+    try:
+        cursor = connection.cursor()
+        insert_query = """
+        INSERT INTO profiles (profile_url, bio, following_count, followers_count, location, website)
+        VALUES (%s, %s, %s, %s, %s, %s)
+        """
+        cursor.execute(insert_query, (
+            profile_data['Profile URL'],
+            profile_data['Bio'],
+            profile_data['Following Count'],
+            profile_data['Followers Count'],
+            profile_data['Location'],
+            profile_data['Website']
+        ))
+        connection.commit()
+        print(f"Data inserted for {profile_data['Profile URL']}")
+    except Error as e:
+        print(f"Error inserting data: {e}")
+    finally:
+        cursor.close()
+
+# Function to scrape Twitter profile details
 def scrape_twitter_profile(url):
     """
     Given a Twitter profile URL, this function scrapes the following details:
@@ -62,9 +108,10 @@ def scrape_twitter_profile(url):
 
     return profile_data
 
-# Define the path to your CSV file
+# Define the path to your input CSV file
 input_csv_path = r"C:\Users\Hari Ganesh\OneDrive\Documents\Python\twitter_scrappy\twitter_links.csv"
 
+# Load URLs from the CSV file
 try:
     # Load the CSV file and print the column names for verification
     urls_df = pd.read_csv(input_csv_path)
@@ -87,23 +134,19 @@ except KeyError as e:
 except Exception as e:
     print("An unexpected error occurred:", e)
 
+# Create a database connection
+connection = create_connection()
 
-# List to store scraped data for each profile
-scraped_data = []
+if connection:
+    # Loop through each URL to scrape data
+    for url in urls:
+        print(f"Scraping data for: {url}")
+        profile_info = scrape_twitter_profile(url)
+        insert_data(connection, profile_info)
+        time.sleep(2)  # Delay to avoid rate-limiting
 
-# Loop through each URL to scrape data
-for url in urls:
-    print(f"Scraping data for: {url}")
-    profile_info = scrape_twitter_profile(url)
-    scraped_data.append(profile_info)
-    time.sleep(2)  # Delay to avoid rate-limiting by Twitter
-
-# Save the scraped data to a new CSV file
-output_csv_path = r'C:\Users\Hari Ganesh\OneDrive\Documents\Python\twitter_scrappy\twitter_scrapped_data.csv'  # Update path for the output CSV file
-output_df = pd.DataFrame(scraped_data)
-output_df.to_csv(output_csv_path, index=False)
+    connection.close()
+    print("Data scraping and insertion completed.")
 
 # Close the WebDriver
 driver.quit()
-
-print("Data scraping completed and saved to CSV.")
