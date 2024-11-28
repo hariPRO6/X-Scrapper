@@ -1,6 +1,6 @@
 # XScraper
 
-This project scrapes public information from Twitter profiles and stores the data in a MySQL database.
+This project scrapes public information from Twitter profiles using Selenium and stores the data in a MySQL database.
 
 ## Features
 - Scrapes Twitter profiles for the following details:
